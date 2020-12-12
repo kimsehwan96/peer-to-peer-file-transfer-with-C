@@ -185,13 +185,11 @@ int main()
                             getcwd(tmp_file_path, BUFSIZE);
                             strcat(tmp_file_path, "/tmp/");
                             strcat(tmp_file_path, "user1_tmp.lst");
-                            printf("tmp_file path : %s \n", tmp_file_path);
                             FILE *server_list_file = fopen(tmp_file_path, "r");
                             if (server_list_file == NULL)
                             {
                                 printf("error occured on FP");
                             }
-                            printf("will send file...! \n");
                             send_file(server_list_file, new_fd);
                             printf("server send done !! \n");
                             fclose(server_list_file);
@@ -213,14 +211,7 @@ int main()
                             //여기서 tmp 파일 인덱스를 찾아서. 어떤 유저, 어떤 아이디, 어떤 포트, 어떤 파일인지 갖는다.
                             p2p_stream = fopen("tmp/user1_tmp.lst", "r+");
                             parse_file_info(file_info, recv_idx, p2p_stream);
-                            printf("result ... \n");
-                            printf("user : %s\n", file_info->user_name);
-                            printf("port : %d \n", file_info->port);
-                            printf("file name : %s\n", file_info->file_name);
-                            printf("ip : %s \n", file_info->ip);
-                            //어떤 파일을 읽을건지 받아온다.
-                            //tmp 라는 파일에 갖고있다 파일목록쓰
-                            //port와 ip, file_name을 전달해준다.
+
                             strcpy(buf, file_info->file_name);
                             send(new_fd, buf, BUFSIZE, 0);
                             bzero(buf, BUFSIZE);
@@ -304,14 +295,7 @@ int main()
                             //여기서 tmp 파일 인덱스를 찾아서. 어떤 유저, 어떤 아이디, 어떤 포트, 어떤 파일인지 갖는다.
                             p2p_stream = fopen("tmp/user2_tmp.lst", "r+");
                             parse_file_info(file_info, recv_idx, p2p_stream);
-                            printf("result ... \n");
-                            printf("user : %s\n", file_info->user_name);
-                            printf("port : %d \n", file_info->port);
-                            printf("file name : %s\n", file_info->file_name);
-                            printf("ip : %s \n", file_info->ip);
-                            //어떤 파일을 읽을건지 받아온다.
-                            //tmp 라는 파일에 갖고있다 파일목록쓰
-                            //port와 ip, file_name을 전달해준다.
+
                             strcpy(buf, file_info->file_name);
                             send(new_fd, buf, BUFSIZE, 0);
                             bzero(buf, BUFSIZE);
@@ -391,11 +375,6 @@ int make_tmp_file(int token)
     // /Users/gimsehwan/Desktop/ingkle/studying_C/2020_fall_embeded_os/assignmnet_2
     strcpy(tmp_file_path, buf);
     strcat(tmp_file_path, "/tmp"); // 하위 디렉터리 tmp
-    // strcat(buf, "/data"); // 하위 디렉터리 /data 의 절대경로를 얻음
-    // printf("this is cat buf + /data :: %s \n", buf);
-    // // buf == "/Users/gimsehwan/Desktop/ingkle/studying_C/2020_fall_embeded_os/assignmnet_2/data"
-    // // strcat(buf, tmp_file_name);
-    // strcpy(path, buf); //path에 buf에 담긴 경로 문자열 담아놓음
     strcat(tmp_file_path, "/");
     strcat(tmp_file_path, tmp_file_name);
     fd = open(tmp_file_path,
@@ -442,7 +421,6 @@ int make_tmp_file(int token)
                 fflush(fp);
                 idx++;
             }
-            //각 파일의 맨 앞에 인덱스를 붙여주는 로직
             fclose(tmp_fp);
             close(tmp_fd);
         }
