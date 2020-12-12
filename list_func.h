@@ -41,7 +41,6 @@ void mklistf(const char *username, const char *ipinfo, int portnum)
         lstat(entry->d_name, &info);
         if (S_ISREG(info.st_mode)) //파일일때
         {
-            printf("FILE : %s\n", entry->d_name);
             strcat(buf, username); // buf -> user1
             strcat(buf, " "); // buf -> user1 
             strcat(buf, ipinfo); // buf -> user1 192.168.0.1
