@@ -1,5 +1,8 @@
 # 2020 가을학기 KPU 임베디드 운영체제 텀프로젝트 2 & 3
 
+### 2018146005 김다은
+### 2015146007 김세환
+
 - 구조
     - client.c
         - 클라이언트 측 코드
@@ -12,210 +15,29 @@
     - list_func.h
         - 해당 코드가 실행중인 디렉터리의 파일 리스트를 만들어주는 코드
 
-### <strong> common.h</strong>
+### 텀프로젝트 2번
 
-```c
-//here will be useful common functions
-/*
-유저 인증 및 macro 상수를 정의하는 파일 임.
-유저의 id, password를 저장하고 있으며,
-유저를 구분하기 위한 token 값을 상수로 define 하여 사용함.
-*/
+![1](images/1.png)
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-
-#define INIT_MSG "===================\n Hi this is p2p test plz login\n ===============\n"
-#define ID_REQ "input id : "
-#define PW_REQ "input password : "
-#define USER1_ID "user"
-#define USER1_PW "passwd1"
-#define USER2_ID "user2"
-#define USER2_PW "passwd2"
-
-#define USER1_LOGIN 1
-#define USER2_LOGIN 2
-#define LOGIN_FAIL 0
-#define BUFSIZE 512
-#define USER1_FTP_PORT 4141 //FTP를 위한 포트 번호
-#define USER2_FTP_PORT 4142 //FTP를 위한 포트 번호
+- Sever Concurrency 구현
 
 
-// 유저의 인증로직을 위한 함수.
-unsigned int authenticate(int fd, char *id, char *pw)
-{
-    send(fd, ID_REQ, strlen(ID_REQ) + 1, 0); //strlen((char *)some_string +1) 인 이유는 Null 포함
-    read(fd, id, sizeof(id));
-    send(fd, PW_REQ, strlen(PW_REQ) + 1, 0);
-    read(fd, pw, sizeof(pw));
+![2](images/2.png)
 
-    printf("===========================\n");
-    printf("User Information\n");
-    printf("id : %s  pw : %s \n", id, pw);
-    printf("===========================\n");
+1. 각 클라이언트는 자신의 디렉터리에 있는 파일을 리스트화 해서 파일로 만든다.
 
-    if (strcmp(id, USER1_ID) == 0)
-    {
-        if (strcmp(pw, USER1_PW) == 0)
-        {
-            printf("%s Login success \n", id);
-            return USER1_LOGIN;
-        }
-        else
-        {
-            return LOGIN_FAIL;
-        }
-    }
-    else if (strcmp(id, USER2_ID) == 0)
-    {
-        if (strcmp(pw, USER2_PW) == 0)
-        {
-            printf("%s Login success \n", id);
-            return USER2_LOGIN;
-        }
-        else
-        {
-            return LOGIN_FAIL;
-        }
-    }
-    else
-        return LOGIN_FAIL;
-}
+2. 서버는 각 클라이언트로부터 받은 리스트 파일을 합쳐서 갖는다.
 
-// 파일 포인터를 입력받아서 파일의 사이즈를 리턴하는 함수
 
-int get_file_size(FILE *stream)
-{
-    int fd, pos;
-    if ((fd = fileno(stream)) < 0)
-    {
-        perror("fileno");
-        return -1; //error intger return
-    }
-    //파일 오프셋을 0으로 설정
-    lseek(fd, 0, SEEK_SET);
-    //파일 오프셋을 파일의 끝으로 설정하고 크기 받아오기
-    pos = lseek(fd, 0, SEEK_END);
-    //다시 0으로
-    lseek(fd, 0, SEEK_SET);
-    return pos;
-}
+#### 클라이언트의 리스트 파일 생성 코드
 
-//파일 송신 / 수신 함수
+- `list_func.h` 라는 헤더파일로 작성한다.
+- `opendir()` 시스템 콜을 이용하여 디렉터리 포인터를 연다.
+    - `readdir()` 시스템 콜을 이용하여 디렉터리 내 inode들을 모두 체크한다.
+    - `readdir()`이 null 일 때 까지 반복 순회
+    - 파일 일 경우 client 코드가 실행되는 작업공간에 user{token}_file_list.lst 형태로 파일을 생성한다.
 
-void send_file(FILE *fp, int sockfd)
-{
-    int n;
-    char data[BUFSIZE] = {0};
-    int cnt = 0;
-    while (fgets(data, BUFSIZE, fp) != NULL)
-    {
-        cnt++;
-        if (send(sockfd, data, BUFSIZE, 0) == -1)
-        {
-            perror("[-]Error in sending file.");
-            exit(1);
-        }
-        bzero(data, BUFSIZE);
-    }
-    cnt++;
-    bzero(data, BUFSIZE);
-    strncpy(data, "DATSD\0", 6); //DATSD는 전송 완료되었음을 명시하기 위해서 사용
-    //보안에 취약점이 있지만 그냥 쓰자.
-    send(sockfd, data, BUFSIZE, 0);
-    return;
-}
-
-void write_file(int sockfd, char *store_name)
-{
-    int n;
-    FILE *fp;
-    char buffer[BUFSIZE];
-    int cnt = 0;
-
-    fp = fopen(store_name, "w+");
-    while (1)
-    {
-        cnt++;
-        n = read(sockfd, buffer, BUFSIZE);
-        if (n <= 0)
-        {
-            break;
-            return;
-        }
-        fprintf(fp, "%s", buffer);
-        bzero(buffer, BUFSIZE);
-    }
-    fclose(fp);
-    return;
-}
-
-void write_file_to_fd(int sockfd, int fd)
-{   sleep(2);
-    int n;
-    FILE *fp;
-    char buffer[BUFSIZE];
-    int cnt = 0;
-    int cmp_num;
-
-    fp = fdopen(fd, "w");
-    if (fp == NULL)
-    {
-        perror("open");
-    }
-    while (1)
-    {
-        cnt++;
-        n = recv(sockfd, buffer, BUFSIZE, 0); //마지막에 EOF를 던져주지 않으면 블로킹 당함.
-        if (n <= 0)
-        { //EOF -> 소켓이 끊어지면 전달된다 (n = 0)
-            // n < 0 -> recv 에러.
-            break;
-            return;
-        }
-        cmp_num = strncmp(buffer, "DATSD", 5);
-        if (cmp_num == 0)
-        {
-            break;
-            return;
-        }
-        fprintf(fp, "%s", buffer);
-        bzero(buffer, BUFSIZE);
-    }
-    fclose(fp);
-    return;
-}
-
-void print_recv_file(int sockfd)
-{
-    int n;
-    char buffer[BUFSIZE];
-    while (1)
-    {
-        n = recv(sockfd, buffer, BUFSIZE, 0);
-        if (n <= 0)
-        {
-            break;
-            return;
-        }
-        if ((strcmp(buffer, "DATSD")) == 0)
-        {
-            printf("file recv done!\n");
-            break;
-            return;
-        }
-        printf("%s", buffer);
-        bzero(buffer, BUFSIZE);
-    }
-    return;
-}
-```
-
-### <strong> list_func.h</strong>
+- <strong>list_func.h</strong>
 
 ```c
 #include <stdio.h>
@@ -234,10 +56,14 @@ void print_recv_file(int sockfd)
 
 void mklistf(const char *username, const char *ipinfo, int portnum)
 {
+    /* 리스트 파일을 저장하기 위한 파일 포인터 선언 */
     FILE *fp;
+    /* current work directory */
     char *cwd = (char *)malloc(sizeof(char) * 1024);
     char filename[256];
+    /* 디렉터리 포인터 */
     DIR *dir = NULL;
+     /* 디렉터리 구조체 */
     struct dirent *entry = NULL;
 
     //파일 내용을 채울 임시 버퍼
@@ -261,6 +87,7 @@ void mklistf(const char *username, const char *ipinfo, int portnum)
         lstat(entry->d_name, &info);
         if (S_ISREG(info.st_mode)) //파일일때
         {
+            printf("FILE : %s\n", entry->d_name);
             strcat(buf, username); // buf -> user1
             strcat(buf, " "); // buf -> user1 
             strcat(buf, ipinfo); // buf -> user1 192.168.0.1
@@ -272,6 +99,7 @@ void mklistf(const char *username, const char *ipinfo, int portnum)
             strcat(buf, "\n");
             fputs(buf, fp);
             memset(buf, 0, 100);
+            /* 최종적인 파일의 형태는 username ip port  filename 의 형식*/
         }
         else if (S_ISDIR(info.st_mode)) // 디렉토리(폴더)일때
         {
@@ -288,7 +116,18 @@ void mklistf(const char *username, const char *ipinfo, int portnum)
 }
 ```
 
-### <strong> my_ip.h</strong>
+
+#### 클라이언트의 ip address 얻는 코드
+
+- 최대한 하드코딩을 지양하기 위해, 자신의 특정 netwokr interface의 ip주소를 자동으로 받는 코드 작성.
+
+- 현재 리눅스 서버의 network interface는 다음과 같다.
+
+![3](images/3.png)
+
+- 위 사진과 같이 교내 실습 리눅스 서버의 network interface의 이름은 enp5s0이다.
+
+- <strong>my_ip.h</strong>
 
 ```c
 #include <stdio.h>
@@ -325,7 +164,56 @@ void myIp(char *buf)
 }
 ```
 
-### <strong> server.c</strong>
+- 인자로 입력한 문자열 포인터에 ip address를 복사해 전달한다.
+
+- 서버코드와 클라이언트 코드는 맨 마지막에 작성하겠습니다 (텀프로젝트 2와 3 동일한 코드)
+- 너무 깁니다.
+
+#### 실제 동작 구현 장면
+
+- 서버 코드는 .100번에
+    - 클라 코드는 각 .101, .102번에 배포
+    - 서버 코드 먼저 실행한다.
+
+![4](images/4.png)
+
+
+
+- Server concurrency 구현 장면
+
+![5](images/5.png)
+
+- user1이 파일 리스트를 서버로 전송하는 장면
+
+![6](images/6.png)
+
+
+- 여기서 느낀 고찰
+    - 로컬 코드에서 로컬 파일을 read, write 하는 경우에는 EOF 판단이 매우 쉽다.
+    - 파일의 끝을 만났을 경우 read() 시스템콜이 0을 즉시 반환하기 때문이다.
+    - 혹시나 read()시스템콜이 read()요청한 값보다 작다면 blocking이 된다.
+        - 이 때 블로킹이 되고 싶지 않다면 비동기 처리를 해야하며
+        - 이 때 사용하는 기법이 select나 poll과 같은 기법이 있다.
+        - 다중 입출력을 수행하는 코드가 아니므로 사용하지 않았다(멀티플렉싱)
+    - 하지만 소켓은 파일의끝, EOF를 socket close (전송계층에서의 FIN & ACK 전송)으로 판단하는데
+    - 소켓 연결을 끊지 않고 진행하기 위해서는 다음과 같은 방법들을 고안했다
+        - 1. 응용계층에서 헤더/바디 구조를 만들어 패킷 데이터 사이즈, 명령어, 파일의 끝인지 아닌지 등을 구분
+        - 2. 단순히 마지막 전송에 대한 문자열을 전송하여 판단
+    - 여기서 구현 난이도를 따졌을 때 2번이 합리적이라고 판단해서 그렇게 구현했다
+        - 저희 팀 코드에서는 DATSD
+        - 절대로 권장되는 기법은 아니지만, 간단히 구현하기 위해서 그렇게 작성함
+
+- user2도 똑같은 진행을 한 뒤
+    - user1과 user2가 저장한 파일 리스트 파일 확인
+
+![7](images/7.png)
+
+- 파일 내용 확인
+
+![8](images/8.png)
+
+
+#### 서버 코드
 
 ```c
 /*
@@ -796,8 +684,7 @@ void parse_file_info(struct p2p_file *file_info, int find_idx, FILE *stream)
 }
 ```
 
-
-### <strong> clinet.c</strong>
+### 클라이언트 코드
 
 ```c
 /*
@@ -1166,3 +1053,227 @@ int setup_socket_connect(char *ip, int port)
 }
 ```
 
+- common.h 헤더 파일
+
+```c
+//here will be useful common functions
+/*
+유저 인증 및 macro 상수를 정의하는 파일 임.
+유저의 id, password를 저장하고 있으며,
+유저를 구분하기 위한 token 값을 상수로 define 하여 사용함.
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
+#define INIT_MSG "===================\n Hi this is p2p test plz login\n ===============\n"
+#define ID_REQ "input id : "
+#define PW_REQ "input password : "
+#define USER1_ID "user"
+#define USER1_PW "passwd1"
+#define USER2_ID "user2"
+#define USER2_PW "passwd2"
+
+#define USER1_LOGIN 1
+#define USER2_LOGIN 2
+#define LOGIN_FAIL 0
+#define BUFSIZE 512
+#define USER1_FTP_PORT 4141 //FTP를 위한 포트 번호
+#define USER2_FTP_PORT 4142 //FTP를 위한 포트 번호
+
+
+// 유저의 인증로직을 위한 함수.
+unsigned int authenticate(int fd, char *id, char *pw)
+{
+    send(fd, ID_REQ, strlen(ID_REQ) + 1, 0); //strlen((char *)some_string +1) 인 이유는 Null 포함
+    read(fd, id, sizeof(id));
+    send(fd, PW_REQ, strlen(PW_REQ) + 1, 0);
+    read(fd, pw, sizeof(pw));
+
+    printf("===========================\n");
+    printf("User Information\n");
+    printf("id : %s  pw : %s \n", id, pw);
+    printf("===========================\n");
+
+    if (strcmp(id, USER1_ID) == 0)
+    {
+        if (strcmp(pw, USER1_PW) == 0)
+        {
+            printf("%s Login success \n", id);
+            return USER1_LOGIN;
+        }
+        else
+        {
+            return LOGIN_FAIL;
+        }
+    }
+    else if (strcmp(id, USER2_ID) == 0)
+    {
+        if (strcmp(pw, USER2_PW) == 0)
+        {
+            printf("%s Login success \n", id);
+            return USER2_LOGIN;
+        }
+        else
+        {
+            return LOGIN_FAIL;
+        }
+    }
+    else
+        return LOGIN_FAIL;
+}
+
+// 파일 포인터를 입력받아서 파일의 사이즈를 리턴하는 함수
+
+int get_file_size(FILE *stream)
+{
+    int fd, pos;
+    if ((fd = fileno(stream)) < 0)
+    {
+        perror("fileno");
+        return -1; //error intger return
+    }
+    //파일 오프셋을 0으로 설정
+    lseek(fd, 0, SEEK_SET);
+    //파일 오프셋을 파일의 끝으로 설정하고 크기 받아오기
+    pos = lseek(fd, 0, SEEK_END);
+    //다시 0으로
+    lseek(fd, 0, SEEK_SET);
+    return pos;
+}
+
+//파일 송신 / 수신 함수
+
+void send_file(FILE *fp, int sockfd)
+{
+    int n;
+    char data[BUFSIZE] = {0};
+    int cnt = 0;
+    while (fgets(data, BUFSIZE, fp) != NULL)
+    {
+        cnt++;
+        if (send(sockfd, data, BUFSIZE, 0) == -1)
+        {
+            perror("[-]Error in sending file.");
+            exit(1);
+        }
+        bzero(data, BUFSIZE);
+    }
+    cnt++;
+    bzero(data, BUFSIZE);
+    strncpy(data, "DATSD\0", 6); //DATSD는 전송 완료되었음을 명시하기 위해서 사용
+    //보안에 취약점이 있지만 그냥 쓰자.
+    send(sockfd, data, BUFSIZE, 0);
+    return;
+}
+
+void write_file(int sockfd, char *store_name)
+{
+    int n;
+    FILE *fp;
+    char buffer[BUFSIZE];
+    int cnt = 0;
+
+    fp = fopen(store_name, "w+");
+    while (1)
+    {
+        cnt++;
+        n = read(sockfd, buffer, BUFSIZE);
+        if (n <= 0)
+        {
+            break;
+            return;
+        }
+        fprintf(fp, "%s", buffer);
+        bzero(buffer, BUFSIZE);
+    }
+    fclose(fp);
+    return;
+}
+
+void write_file_to_fd(int sockfd, int fd)
+{   sleep(2);
+    int n;
+    FILE *fp;
+    char buffer[BUFSIZE];
+    int cnt = 0;
+    int cmp_num;
+
+    fp = fdopen(fd, "w");
+    if (fp == NULL)
+    {
+        perror("open");
+    }
+    while (1)
+    {
+        cnt++;
+        n = recv(sockfd, buffer, BUFSIZE, 0); //마지막에 EOF를 던져주지 않으면 블로킹 당함.
+        if (n <= 0)
+        { //EOF -> 소켓이 끊어지면 전달된다 (n = 0)
+            // n < 0 -> recv 에러.
+            break;
+            return;
+        }
+        cmp_num = strncmp(buffer, "DATSD", 5);
+        if (cmp_num == 0)
+        {
+            break;
+            return;
+        }
+        fprintf(fp, "%s", buffer);
+        bzero(buffer, BUFSIZE);
+    }
+    fclose(fp);
+    return;
+}
+
+void print_recv_file(int sockfd)
+{
+    int n;
+    char buffer[BUFSIZE];
+    while (1)
+    {
+        n = recv(sockfd, buffer, BUFSIZE, 0);
+        if (n <= 0)
+        {
+            break;
+            return;
+        }
+        if ((strcmp(buffer, "DATSD")) == 0)
+        {
+            printf("file recv done!\n");
+            break;
+            return;
+        }
+        printf("%s", buffer);
+        bzero(buffer, BUFSIZE);
+    }
+    return;
+}
+```
+
+
+## 느낀점
+
+- 하드코딩을 지양하려 했지만 여전히 많은점. 더욱 더 공부해야겠다고 느낌.
+
+- read, write, send, recv는 파일 디스크립터를 조작(버퍼에 값을 읽고 쓰는)하는 것이며
+- fput, fget, printf, fprintf 와 같은 함수들은 `표준입출력`이라는 것을 이해했다.
+
+- 파일 디스크립터를 이용하여 파일 포인터를 얻는 fdopen()과 같은 시스템 콜을 이용하여
+    - 소켓 파일디스크립터를 소켓 입력 스트림, 출력 스트림으로 분리 할 수 있음을 이해했다.
+    - 표준 입출력을 사용했을때의 장점과 단점이 있는데
+        - 장점
+            - 표준 입출력이므로 사용하기 편한점
+            - socket close(FIN)을 전송할때 입력 / 출력 스트림을 분리해 우아한 종료(graceful close)가 가능한점
+        - 단점
+            - fflush() 함수를 자주 호출 해야 하는 점
+            - 표준입출력함수의 장점인 버퍼를 이용한 속도의 이점을 얻기 힘든점
+            - 출력 / 입력 스트림을 분리해 코딩하는 것이 생각보다 난이도가 있다는 점
+
+- 따라서 상황에 맞게 표준 입출력 함수를 이용하여 소켓통신을 할 것인지,
+- write, read, send, recv와 같은 저 수준(low - level) 함수를 이용할 것인지 설계 단계에서 고려가 되어야 하겠다.
