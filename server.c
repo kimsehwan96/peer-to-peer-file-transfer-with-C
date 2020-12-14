@@ -1,5 +1,5 @@
 /*
-한국산업기술대학교 임베디드 시스템과 2015146007 김세환
+한국산업기술대학교 임베디드 시스템과 2015146007 김세환 2018146005 김다은
 임베디드 운영체제 과목 P2P Server Client Implementaion Source Code
 */
 #include <stdio.h>
