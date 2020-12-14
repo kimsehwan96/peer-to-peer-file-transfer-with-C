@@ -69,26 +69,6 @@ unsigned int authenticate(int fd, char *id, char *pw)
         return LOGIN_FAIL;
 }
 
-// 파일 포인터를 입력받아서 파일의 사이즈를 리턴하는 함수
-
-int get_file_size(FILE *stream)
-{
-    int fd, pos;
-    if ((fd = fileno(stream)) < 0)
-    {
-        perror("fileno");
-        return -1; //error intger return
-    }
-    //파일 오프셋을 0으로 설정
-    lseek(fd, 0, SEEK_SET);
-    //파일 오프셋을 파일의 끝으로 설정하고 크기 받아오기
-    pos = lseek(fd, 0, SEEK_END);
-    //다시 0으로
-    lseek(fd, 0, SEEK_SET);
-    return pos;
-}
-
-//파일 송신 / 수신 함수
 
 void send_file(FILE *fp, int sockfd)
 {
@@ -113,29 +93,6 @@ void send_file(FILE *fp, int sockfd)
     return;
 }
 
-void write_file(int sockfd, char *store_name)
-{
-    int n;
-    FILE *fp;
-    char buffer[BUFSIZE];
-    int cnt = 0;
-
-    fp = fopen(store_name, "w+");
-    while (1)
-    {
-        cnt++;
-        n = read(sockfd, buffer, BUFSIZE);
-        if (n <= 0)
-        {
-            break;
-            return;
-        }
-        fprintf(fp, "%s", buffer);
-        bzero(buffer, BUFSIZE);
-    }
-    fclose(fp);
-    return;
-}
 
 void write_file_to_fd(int sockfd, int fd)
 {   sleep(2);
